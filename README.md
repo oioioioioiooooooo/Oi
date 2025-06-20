@@ -8,6 +8,7 @@ local LocalPlayer = Players.LocalPlayer
 _G.HeadSize = 10
 _G.HitboxEnabled = false
 _G.ESPEnabled = false
+_G.HighlightEnabled = false
 
 local function GetTargets()
     local targets = {}
@@ -26,8 +27,8 @@ gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = game.CoreGui
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 260, 0, 160)
-frame.Position = UDim2.new(0.5, -130, 0.5, -80)
+frame.Size = UDim2.new(0, 260, 0, 190)
+frame.Position = UDim2.new(0.5, -130, 0.5, -95)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 0
 frame.Active = true
@@ -55,14 +56,10 @@ end)
 
 -- Tornar botão móvel
 local dragging, dragInput, dragStart, startPos
-
 local function update(input)
     if not dragging then return end
     local delta = input.Position - dragStart
-    toggleButton.Position = UDim2.new(
-        0, startPos.X.Offset + delta.X,
-        0, startPos.Y.Offset + delta.Y
-    )
+    toggleButton.Position = UDim2.new(0, startPos.X.Offset + delta.X, 0, startPos.Y.Offset + delta.Y)
 end
 
 toggleButton.InputBegan:Connect(function(input)
@@ -70,7 +67,6 @@ toggleButton.InputBegan:Connect(function(input)
         dragging = true
         dragStart = input.Position
         startPos = toggleButton.Position
-
         input.Changed:Connect(function()
             if input.UserInputState == Enum.UserInputState.End then
                 dragging = false
@@ -86,9 +82,7 @@ toggleButton.InputChanged:Connect(function(input)
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput then
-        update(input)
-    end
+    if input == dragInput then update(input) end
 end)
 
 -- Título
@@ -134,7 +128,18 @@ espBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 espBtn.BackgroundColor3 = Color3.fromRGB(231, 76, 60)
 Instance.new("UICorner", espBtn).CornerRadius = UDim.new(0, 6)
 
--- Funções
+-- Botão Highlight
+local highlightBtn = Instance.new("TextButton", frame)
+highlightBtn.Size = UDim2.new(1, -30, 0, 30)
+highlightBtn.Position = UDim2.new(0, 15, 0, 145)
+highlightBtn.Text = "Ativar Highlight"
+highlightBtn.Font = Enum.Font.GothamBold
+highlightBtn.TextSize = 14
+highlightBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+highlightBtn.BackgroundColor3 = Color3.fromRGB(155, 89, 182)
+Instance.new("UICorner", highlightBtn).CornerRadius = UDim.new(0, 6)
+
+-- Funções dos botões
 sizeBox.FocusLost:Connect(function()
     local n = tonumber(sizeBox.Text)
     if n then
@@ -154,7 +159,12 @@ espBtn.MouseButton1Click:Connect(function()
     espBtn.Text = _G.ESPEnabled and "Desativar ESP" or "Ativar ESP"
 end)
 
--- Execução Hitbox com reversão de valores
+highlightBtn.MouseButton1Click:Connect(function()
+    _G.HighlightEnabled = not _G.HighlightEnabled
+    highlightBtn.Text = _G.HighlightEnabled and "Desativar Highlight" or "Ativar Highlight"
+end)
+
+-- Execução da Hitbox + Highlight
 RunService.RenderStepped:Connect(function()
     for _, p in ipairs(GetTargets()) do
         local root = p.Character and p.Character:FindFirstChild("HumanoidRootPart")
@@ -165,13 +175,29 @@ RunService.RenderStepped:Connect(function()
                 root.Material = Enum.Material.Neon
                 root.BrickColor = BrickColor.new("Bright blue")
                 root.CanCollide = false
+
+                if _G.HighlightEnabled and not p.Character:FindFirstChild("HitboxHighlight") then
+                    local highlight = Instance.new("Highlight")
+                    highlight.Name = "HitboxHighlight"
+                    highlight.Adornee = root
+                    highlight.FillColor = Color3.fromRGB(0, 170, 255)
+                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    highlight.FillTransparency = 0.2
+                    highlight.OutlineTransparency = 0
+                    highlight.Parent = p.Character
+                elseif not _G.HighlightEnabled then
+                    local oldHighlight = p.Character:FindFirstChild("HitboxHighlight")
+                    if oldHighlight then oldHighlight:Destroy() end
+                end
             else
-                -- Restaura o padrão
                 root.Size = Vector3.new(2, 2, 1)
                 root.Transparency = 1
                 root.Material = Enum.Material.Plastic
                 root.BrickColor = BrickColor.new("Medium stone grey")
                 root.CanCollide = true
+
+                local oldHighlight = p.Character:FindFirstChild("HitboxHighlight")
+                if oldHighlight then oldHighlight:Destroy() end
             end
         end
     end
